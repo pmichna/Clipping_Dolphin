@@ -12,9 +12,6 @@ namespace Dolphin
 {
     public partial class MainForm : Form
     {
-        // TODO : po każdym clippingu przywracaj domyślne punkty do rysowania,
-        // żeby nie przepełnić pamięci (nie dopisywać ciągle nowych intersctions do list)
-
         private PointF _dolphinPosition;
         private List<PointF> _dolphinPoints = new List<PointF>();
         private List<PointF> _wavesPoints = new List<PointF>();
@@ -67,9 +64,19 @@ namespace Dolphin
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
             e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
             e.Graphics.DrawPolygon(new Pen(Color.Gray), _dolphinPoints.ToArray());
-            e.Graphics.FillPolygon(Brushes.Gray, _dolphinPoints.ToArray());
-            myFill(e.Graphics, _wavesPoints.ToArray(), Brushes.Blue);
-
+            //e.Graphics.FillPolygon(Brushes.Gray, _dolphinPoints.ToArray());
+            //myFill(e.Graphics, _wavesPoints.ToArray(), Brushes.Blue);
+            e.Graphics.DrawPolygon(new Pen(Color.Blue), _wavesPoints.ToArray());
+            List<PointF[]> clipAreas;
+            if (_dolphinPosition.Y + _dolphinHeight * 0.5f > _workingArea.Height - 140)
+            {
+                clipAreas = myClip(_dolphinPoints, _wavesPoints, e.Graphics);
+                if (clipAreas != null && clipAreas.Count > 0)
+                {
+                    foreach (PointF[] points in clipAreas)
+                        e.Graphics.FillPolygon(Brushes.Black, points);
+                }
+            }
         }
 
         private void MainForm_Resize(object sender, EventArgs e)
@@ -120,8 +127,7 @@ namespace Dolphin
                     }
                     break;
             }
-            if (_dolphinPosition.Y + _dolphinHeight * 0.5f > _workingArea.Height - 140)
-                myClip(_dolphinPoints, _wavesPoints);
+
         }
 
         private void calculateWavePoints()
@@ -149,10 +155,13 @@ namespace Dolphin
             g.FillPolygon(b, p);
         }
 
-        private List<PointF[]> myClip(List<PointF> polygon1, List<PointF> polygon2)
+        private List<PointF[]> myClip(List<PointF> polygon1, List<PointF> polygon2, Graphics g)
         {
             List<PointF> newPolygon1 = new List<PointF>(polygon1);
             List<PointF> newPolygon2 = new List<PointF>(polygon2);
+            List<PointF> enteringPoints = new List<PointF>();
+            List<PointF> intersectionPoints = new List<PointF>();
+            List<PointF[]> result = new List<PointF[]>();
 
             for (int sideCnt1 = 0; sideCnt1 < polygon1.Count; sideCnt1++)
             {
@@ -175,10 +184,58 @@ namespace Dolphin
                     {
                         newPolygon1.Insert(newPolygon1.IndexOf(p2), intersection);
                         newPolygon2.Insert(newPolygon2.IndexOf(pB), intersection);
+                        intersectionPoints.Add(intersection);
                     }
                 }
             }
-            return null;
+            if(intersectionPoints.Count == 0)
+                return null;
+
+            //marking entering points for newPolygon2
+            foreach (PointF p in intersectionPoints)
+            {
+                int index = newPolygon2.IndexOf(p);
+                if (!intersectionPoints.Contains(newPolygon2[index - 1]))
+                {
+                    enteringPoints.Add(p);
+                }
+            }
+
+            while (enteringPoints.Count != 0)
+            {
+                List<PointF> area = new List<PointF>();
+                int indexP = 0;
+                int indexQ = 0;
+                indexP = newPolygon2.IndexOf(enteringPoints[0]);
+                area.Add(enteringPoints[0]);
+                do
+                {
+                    do
+                    {
+                        indexP++;
+                    } while (!(intersectionPoints.Contains(newPolygon2[indexP]) && !enteringPoints.Contains(newPolygon2[indexP]))); //found exiting point for newPolygon2
+                    area.Add(newPolygon2[indexP]);
+                    indexQ = newPolygon1.IndexOf(newPolygon2[indexP]);
+                    do
+                    {
+                        indexQ++;
+                    } while (!enteringPoints.Contains(newPolygon1[indexQ])); //found entering point for newPolygon2
+                    if (!(newPolygon1[indexQ].Equals(enteringPoints[0])))
+                        area.Add(newPolygon1[indexQ]);
+                } while (!(newPolygon1[indexQ].Equals(enteringPoints[0])));
+                
+                //one area found
+                result.Add(area.ToArray());
+                foreach (PointF p in result[result.Count - 1])
+                {
+                    if (enteringPoints.Contains(p))
+                        enteringPoints.Remove(p);
+                }
+            }
+
+            //g.FillPolygon(Brushes.AliceBlue, newPolygon1.ToArray());
+            //g.FillPolygon(Brushes.Beige, newPolygon2.ToArray());
+            return result;
         }
 
         private PointF findIntersection(PointF p1, PointF p2, PointF pA, PointF pB)
@@ -199,10 +256,55 @@ namespace Dolphin
 
             float x = (b2 * c1 - b1 * c2) / det;
             float y = (a1 * c2 - a2 * c1) / det;
-            if (x < p1.X || x > p2.X || x < pA.X || x > pB.X ||
-                y < p1.Y || y > p2.Y || y < pA.Y || y > pB.Y)
-                return new PointF(-99, -99);
-            return new PointF(x, y);
+            float minx1, maxx1, minxa, maxxa;
+            if (p2.X > p1.X)
+            {
+                minx1 = p1.X;
+                maxx1 = p2.X;
+            }
+            else
+            {
+                minx1 = p2.X;
+                maxx1 = p1.X;
+            }
+            if (pA.X < pB.X)
+            {
+                minxa = pA.X;
+                maxxa = pB.X;
+            }
+            else
+            {
+                minxa = pB.X;
+                maxxa = pA.X;
+            }
+
+            float miny1, maxy1, minya, maxya;
+            if (p1.Y < p2.Y)
+            {
+                miny1 = p1.Y;
+                maxy1 = p2.Y;
+            }
+            else
+            {
+                miny1 = p2.Y;
+                maxy1 = p1.Y;
+            }
+            if (pA.Y < pB.Y)
+            {
+                minya = pA.Y;
+                maxya = pB.Y;
+            }
+            else
+            {
+                minya = pB.Y;
+                maxya = pA.Y;
+            }
+
+            if (x >= minx1 && x <= maxx1 && x >= minxa && x <= maxxa &&
+                y >= miny1 && y <= maxy1 && y >= minya && y <= maxya)
+                return new PointF(x, y);
+            else
+                return new PointF(-99, -99); //indicates error
         }
     }
 }
