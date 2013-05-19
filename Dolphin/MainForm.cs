@@ -134,20 +134,20 @@ namespace Dolphin
         {
             _wavesPoints.Clear();
             _wavesPoints.Add(new PointF(-0.05f * _workingArea.Width, _workingArea.Height));
-            _wavesPoints.Add(new PointF(0.08f * _workingArea.Width, _workingArea.Height - 140));
-            _wavesPoints.Add(new PointF(2 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
-            _wavesPoints.Add(new PointF(3 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
-            _wavesPoints.Add(new PointF(4 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
-            _wavesPoints.Add(new PointF(5 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
-            _wavesPoints.Add(new PointF(6 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
-            _wavesPoints.Add(new PointF(7 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
-            _wavesPoints.Add(new PointF(8 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
-            _wavesPoints.Add(new PointF(9 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
-            _wavesPoints.Add(new PointF(10 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
-            _wavesPoints.Add(new PointF(11 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
-            _wavesPoints.Add(new PointF(12 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
-            _wavesPoints.Add(new PointF(13 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
             _wavesPoints.Add(new PointF(14 * 0.08f * _workingArea.Width, _workingArea.Height));
+            _wavesPoints.Add(new PointF(13 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
+            _wavesPoints.Add(new PointF(12 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
+            _wavesPoints.Add(new PointF(11 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
+            _wavesPoints.Add(new PointF(10 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
+            _wavesPoints.Add(new PointF(9 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
+            _wavesPoints.Add(new PointF(8 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
+            _wavesPoints.Add(new PointF(7 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
+            _wavesPoints.Add(new PointF(6 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
+            _wavesPoints.Add(new PointF(5 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
+            _wavesPoints.Add(new PointF(4 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
+            _wavesPoints.Add(new PointF(3 * 0.08f * _workingArea.Width, _workingArea.Height - 140));
+            _wavesPoints.Add(new PointF(2 * 0.08f * _workingArea.Width, _workingArea.Height - 56));
+            _wavesPoints.Add(new PointF(0.08f * _workingArea.Width, _workingArea.Height - 140));
         }
 
         private void myFill(Graphics g, PointF[] p, Brush b)
@@ -195,34 +195,42 @@ namespace Dolphin
             foreach (PointF p in intersectionPoints)
             {
                 int index = newPolygon2.IndexOf(p);
-                if (!intersectionPoints.Contains(newPolygon2[index - 1]))
+                if (!isPointInPolygon(newPolygon1.ToArray(), newPolygon2[index-1]))
                 {
                     enteringPoints.Add(p);
                 }
             }
 
+
+            //TODO: fix out of range Exception
             while (enteringPoints.Count != 0)
             {
                 List<PointF> area = new List<PointF>();
-                int indexP = 0;
-                int indexQ = 0;
-                indexP = newPolygon2.IndexOf(enteringPoints[0]);
+                //int indexP = 0;
+                //int indexQ = 0;
+                //indexP = newPolygon2.IndexOf(enteringPoints[0]);
+                PointF currPoint = enteringPoints[0];
                 area.Add(enteringPoints[0]);
                 do
                 {
                     do
                     {
-                        indexP++;
-                    } while (!(intersectionPoints.Contains(newPolygon2[indexP]) && !enteringPoints.Contains(newPolygon2[indexP]))); //found exiting point for newPolygon2
-                    area.Add(newPolygon2[indexP]);
-                    indexQ = newPolygon1.IndexOf(newPolygon2[indexP]);
+                        int index = newPolygon2.IndexOf(currPoint);
+                        currPoint = newPolygon2[index + 1];
+                        //indexP++;
+                    } while (!(intersectionPoints.Contains(currPoint) && !enteringPoints.Contains(currPoint))); //found exiting point for newPolygon2
+                    //area.Add(newPolygon2[indexP]);
+                    area.Add(currPoint);
+                    //indexQ = newPolygon1.IndexOf(newPolygon2[indexP]);
                     do
                     {
-                        indexQ++;
-                    } while (!enteringPoints.Contains(newPolygon1[indexQ])); //found entering point for newPolygon2
-                    if (!(newPolygon1[indexQ].Equals(enteringPoints[0])))
-                        area.Add(newPolygon1[indexQ]);
-                } while (!(newPolygon1[indexQ].Equals(enteringPoints[0])));
+                        //indexQ++;
+                        int index = newPolygon1.IndexOf(currPoint);
+                        currPoint = newPolygon1[index + 1];
+                    } while (!enteringPoints.Contains(currPoint)); //found entering point for newPolygon2
+                    if (!(currPoint.Equals(enteringPoints[0])))
+                        area.Add(currPoint);
+                } while (!(currPoint.Equals(enteringPoints[0])));
                 
                 //one area found
                 result.Add(area.ToArray());
@@ -232,9 +240,24 @@ namespace Dolphin
                         enteringPoints.Remove(p);
                 }
             }
+            return result;
+        }
 
-            //g.FillPolygon(Brushes.AliceBlue, newPolygon1.ToArray());
-            //g.FillPolygon(Brushes.Beige, newPolygon2.ToArray());
+        private static bool isPointInPolygon(PointF[] polygon, PointF testPoint)
+        {
+            bool result = false;
+            int j = polygon.Count() - 1;
+            for (int i = 0; i < polygon.Count(); i++)
+            {
+                if (polygon[i].Y < testPoint.Y && polygon[j].Y >= testPoint.Y || polygon[j].Y < testPoint.Y && polygon[i].Y >= testPoint.Y)
+                {
+                    if (polygon[i].X + (testPoint.Y - polygon[i].Y) / (polygon[j].Y - polygon[i].Y) * (polygon[j].X - polygon[i].X) < testPoint.X)
+                    {
+                        result = !result;
+                    }
+                }
+                j = i;
+            }
             return result;
         }
 
