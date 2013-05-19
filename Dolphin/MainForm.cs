@@ -22,7 +22,6 @@ namespace Dolphin
         private int _dolphinHeight = 100;
         private int _dolphinWidth = 220;
         private Timer _timer = new Timer();
-        private int tickCounter = 0;
         private bool _waveMoveLeft = false;
 
         public MainForm()
@@ -45,8 +44,6 @@ namespace Dolphin
             _timer.Interval = 900;
             _timer.Tick += new EventHandler(tick);
             _timer.Start();
-
-            PointF[] arr = new PointF[] { new PointF(1, 2) };
         }
 
         private void tick(object sender, EventArgs e)
@@ -61,9 +58,6 @@ namespace Dolphin
             {
                 _wavesPoints[i] = new PointF(_wavesPoints[i].X + step, _wavesPoints[i].Y);
             }
-            tickCounter++;
-            if (tickCounter == _wavesPoints.Count)
-                tickCounter = 0;
             this.Invalidate();
         }
 
