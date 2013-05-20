@@ -202,7 +202,7 @@ namespace Dolphin
             }
 
 
-            //TODO: fix out of range Exception
+            //TODO: fix out of range Exception;
             while (enteringPoints.Count != 0)
             {
                 List<PointF> area = new List<PointF>();
@@ -217,19 +217,20 @@ namespace Dolphin
                     {
                         int index = newPolygon2.IndexOf(currPoint);
                         currPoint = newPolygon2[index + 1];
+                        if (!(currPoint.Equals(enteringPoints[0])))
+                            area.Add(currPoint);
                         //indexP++;
                     } while (!(intersectionPoints.Contains(currPoint) && !enteringPoints.Contains(currPoint))); //found exiting point for newPolygon2
                     //area.Add(newPolygon2[indexP]);
-                    area.Add(currPoint);
                     //indexQ = newPolygon1.IndexOf(newPolygon2[indexP]);
                     do
                     {
                         //indexQ++;
                         int index = newPolygon1.IndexOf(currPoint);
                         currPoint = newPolygon1[index + 1];
+                        if (!(currPoint.Equals(enteringPoints[0])))
+                            area.Add(currPoint);
                     } while (!enteringPoints.Contains(currPoint)); //found entering point for newPolygon2
-                    if (!(currPoint.Equals(enteringPoints[0])))
-                        area.Add(currPoint);
                 } while (!(currPoint.Equals(enteringPoints[0])));
                 
                 //one area found
