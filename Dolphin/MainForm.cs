@@ -189,7 +189,7 @@ namespace Dolphin
             foreach (PointF p in intersectionPoints)
             {
                 int index = newPolygon2.IndexOf(p);
-                if (!isPointInPolygon(newPolygon1.ToArray(), newPolygon2[index - 1]))
+                if (!isPointInPolygon(newPolygon1.ToArray(), newPolygon2[index - 1]) && !intersectionPoints.Contains(newPolygon2[index-1]))
                 {
                     enteringPoints.Add(p);
                 }
