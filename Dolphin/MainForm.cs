@@ -45,17 +45,17 @@ namespace Dolphin
 
         private void tick(object sender, EventArgs e)
         {
-            int step = 25;
-            if (_waveMoveLeft)
-            {
-                step = -step;
-            }
-            _waveMoveLeft = !_waveMoveLeft;
-            for (int i = 0; i < _wavesPoints.Count; i++)
-            {
-                _wavesPoints[i] = new PointF(_wavesPoints[i].X + step, _wavesPoints[i].Y);
-            }
-            this.Invalidate();
+            //int step = 25;
+            //if (_waveMoveLeft)
+            //{
+            //    step = -step;
+            //}
+            //_waveMoveLeft = !_waveMoveLeft;
+            //for (int i = 0; i < _wavesPoints.Count; i++)
+            //{
+            //    _wavesPoints[i] = new PointF(_wavesPoints[i].X + step, _wavesPoints[i].Y);
+            //}
+            //this.Invalidate();
         }
 
         private void MainForm_Paint(object sender, PaintEventArgs e)
@@ -64,8 +64,6 @@ namespace Dolphin
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
             e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
             e.Graphics.DrawPolygon(new Pen(Color.Gray), _dolphinPoints.ToArray());
-            //e.Graphics.FillPolygon(Brushes.Gray, _dolphinPoints.ToArray());
-            //myFill(e.Graphics, _wavesPoints.ToArray(), Brushes.Blue);
             e.Graphics.DrawPolygon(new Pen(Color.Blue), _wavesPoints.ToArray());
             List<PointF[]> clipAreas;
             if (_dolphinPosition.Y + _dolphinHeight * 0.5f > _workingArea.Height - 140)
@@ -182,33 +180,29 @@ namespace Dolphin
                     PointF intersection = findIntersection(p1, p2, pA, pB);
                     if (intersection.X != -99 && intersection.Y != -99)
                     {
-                        newPolygon1.Insert(newPolygon1.IndexOf(p2), intersection);
-                        newPolygon2.Insert(newPolygon2.IndexOf(pB), intersection);
+                        insertIntoPolygon(ref newPolygon1, intersection, p1, p2);
+                        insertIntoPolygon(ref newPolygon2, intersection, pA, pB);
                         intersectionPoints.Add(intersection);
                     }
                 }
             }
-            if(intersectionPoints.Count == 0)
+            if (intersectionPoints.Count == 0)
                 return null;
 
             //marking entering points for newPolygon2
             foreach (PointF p in intersectionPoints)
             {
                 int index = newPolygon2.IndexOf(p);
-                if (!isPointInPolygon(newPolygon1.ToArray(), newPolygon2[index-1]))
+                if (!isPointInPolygon(newPolygon1.ToArray(), newPolygon2[index - 1]))
                 {
                     enteringPoints.Add(p);
                 }
             }
-
-
-            //TODO: fix out of range Exception;
+            
+            //TODO: fix out of memory Exception;
             while (enteringPoints.Count != 0)
             {
                 List<PointF> area = new List<PointF>();
-                //int indexP = 0;
-                //int indexQ = 0;
-                //indexP = newPolygon2.IndexOf(enteringPoints[0]);
                 PointF currPoint = enteringPoints[0];
                 area.Add(enteringPoints[0]);
                 do
@@ -216,32 +210,86 @@ namespace Dolphin
                     do
                     {
                         int index = newPolygon2.IndexOf(currPoint);
-                        currPoint = newPolygon2[index + 1];
+                        int nextIndex = index + 1;
+                        if (nextIndex == newPolygon2.Count)
+                            nextIndex = 0;
+                        currPoint = newPolygon2[nextIndex]; // error here
                         if (!(currPoint.Equals(enteringPoints[0])))
                             area.Add(currPoint);
-                        //indexP++;
                     } while (!(intersectionPoints.Contains(currPoint) && !enteringPoints.Contains(currPoint))); //found exiting point for newPolygon2
-                    //area.Add(newPolygon2[indexP]);
-                    //indexQ = newPolygon1.IndexOf(newPolygon2[indexP]);
                     do
                     {
-                        //indexQ++;
                         int index = newPolygon1.IndexOf(currPoint);
-                        currPoint = newPolygon1[index + 1];
+                        int nextIndex = index + 1;
+                        if (nextIndex == newPolygon1.Count)
+                            nextIndex = 0;
+                        currPoint = newPolygon1[nextIndex];
                         if (!(currPoint.Equals(enteringPoints[0])))
                             area.Add(currPoint);
                     } while (!enteringPoints.Contains(currPoint)); //found entering point for newPolygon2
                 } while (!(currPoint.Equals(enteringPoints[0])));
-                
+
                 //one area found
                 result.Add(area.ToArray());
                 foreach (PointF p in result[result.Count - 1])
                 {
-                    if (enteringPoints.Contains(p))
-                        enteringPoints.Remove(p);
+                    enteringPoints.Remove(p);
                 }
             }
             return result;
+        }
+
+        private void insertIntoPolygon(ref List<PointF> polygon, PointF intersection, PointF segmentBegin, PointF segmentEnd)
+        {
+            // get all intersections for current line segment on polygon
+            List<PointF> newLineSegment = new List<PointF>();
+            int indexP1 = polygon.IndexOf(segmentBegin);
+            int indexP2 = polygon.IndexOf(segmentEnd);
+            int count;
+            if (indexP2 == 0)
+            {
+                if (indexP1 == polygon.Count - 1)
+                {
+                    polygon.Add(intersection);
+                    return;
+                }
+                else
+                {
+                    bool inserted = false;
+                    for (int i = indexP1; i < polygon.Count; i++)
+                    {
+                        if (calculateDistance(segmentBegin, intersection) < calculateDistance(segmentBegin, polygon[i]) && !inserted)
+                        {
+                            newLineSegment.Add(intersection);
+                            inserted = true;
+                        }
+                        newLineSegment.Add(polygon[i]);
+                    }
+                    count = polygon.Count - indexP1;
+                }
+            }
+            else
+            {
+                bool inserted = false;
+                for (int i = indexP1; i <= indexP2; i++)
+                {
+                    if (calculateDistance(segmentBegin, intersection) < calculateDistance(segmentBegin, polygon[i]) && !inserted)
+                    {
+                        newLineSegment.Add(intersection);
+                        inserted = true;
+                    }
+                    newLineSegment.Add(polygon[i]);
+                }
+                //count points on the segment
+                count = indexP2 - indexP1 + 1;
+            }
+            polygon.RemoveRange(indexP1, count);
+            polygon.InsertRange(indexP1, newLineSegment);
+        }
+
+        private float calculateDistance(PointF p1, PointF p2)
+        {
+            return ((p1.X - p2.X) * (p1.X - p2.X) + (p1.Y - p2.Y) * (p1.Y - p2.Y));
         }
 
         private static bool isPointInPolygon(PointF[] polygon, PointF testPoint)
@@ -262,24 +310,28 @@ namespace Dolphin
             return result;
         }
 
+        private float[] getABC(PointF p1, PointF p2)
+        {
+            float a = p2.Y - p1.Y;
+            float b = p1.X - p2.X;
+            float c = a * p1.X + b * p1.Y;
+            return new float[] { a, b, c };
+        }
+
         private PointF findIntersection(PointF p1, PointF p2, PointF pA, PointF pB)
         {
             //coefficients for the first line
-            float a1 = p2.Y - p1.Y;
-            float b1 = p1.X - p2.X;
-            float c1 = a1 * p1.X + b1 * p1.Y;
+            float[] coefficients1 = getABC(p1, p2);
 
             //coefficients for the second line
-            float a2 = pB.Y - pA.Y;
-            float b2 = pA.X - pB.X;
-            float c2 = a2 * pA.X + b2 * pA.Y;
+            float[] coefficients2 = getABC(pA, pB);
 
-            float det = a1 * b2 - a2 * b1;
+            float det = coefficients1[0] * coefficients2[1] - coefficients2[0] * coefficients1[1];
             if (det == 0)
                 return new PointF(-99, -99);
 
-            float x = (b2 * c1 - b1 * c2) / det;
-            float y = (a1 * c2 - a2 * c1) / det;
+            float x = (coefficients2[1] * coefficients1[2] - coefficients1[1] * coefficients2[2]) / det;
+            float y = (coefficients1[0] * coefficients2[2] - coefficients2[0] * coefficients1[2]) / det;
             float minx1, maxx1, minxa, maxxa;
             if (p2.X > p1.X)
             {
