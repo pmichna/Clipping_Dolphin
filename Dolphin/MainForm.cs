@@ -68,7 +68,7 @@ namespace Dolphin
             List<PointF[]> clipAreas;
             if (_dolphinPosition.Y + _dolphinHeight * 0.5f > _workingArea.Height - 140)
             {
-                clipAreas = myClip(_dolphinPoints, _wavesPoints, e.Graphics);
+                clipAreas = myClip(_dolphinPoints, _wavesPoints);
                 if (clipAreas != null && clipAreas.Count > 0)
                 {
                     foreach (PointF[] points in clipAreas)
@@ -153,7 +153,7 @@ namespace Dolphin
             g.FillPolygon(b, p);
         }
 
-        private List<PointF[]> myClip(List<PointF> polygon1, List<PointF> polygon2, Graphics g)
+        private List<PointF[]> myClip(List<PointF> polygon1, List<PointF> polygon2)
         {
             List<PointF> newPolygon1 = new List<PointF>(polygon1);
             List<PointF> newPolygon2 = new List<PointF>(polygon2);
@@ -213,7 +213,7 @@ namespace Dolphin
                         int nextIndex = index + 1;
                         if (nextIndex == newPolygon2.Count)
                             nextIndex = 0;
-                        currPoint = newPolygon2[nextIndex]; // error here
+                        currPoint = newPolygon2[nextIndex];
                         if (!(currPoint.Equals(enteringPoints[0])))
                             area.Add(currPoint);
                     } while (!(intersectionPoints.Contains(currPoint) && !enteringPoints.Contains(currPoint))); //found exiting point for newPolygon2
