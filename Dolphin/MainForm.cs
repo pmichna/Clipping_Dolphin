@@ -69,6 +69,7 @@ namespace Dolphin
                 {
                     foreach (PointF[] points in clipAreas)
                         e.Graphics.FillPolygon(Brushes.Black, points);
+                        //myFill(points, e.Graphics);
                 }
             }
         }
@@ -189,12 +190,12 @@ namespace Dolphin
             foreach (PointF p in intersectionPoints)
             {
                 int index = newPolygon2.IndexOf(p);
-                if (!isPointInPolygon(newPolygon1.ToArray(), newPolygon2[index - 1]) && !intersectionPoints.Contains(newPolygon2[index-1]))
+                if (!isPointInPolygon(newPolygon1.ToArray(), newPolygon2[index - 1]) && !intersectionPoints.Contains(newPolygon2[index - 1]))
                 {
                     enteringPoints.Add(p);
                 }
             }
-            
+
             //TODO: fix out of memory Exception;
             while (enteringPoints.Count != 0)
             {
@@ -377,6 +378,99 @@ namespace Dolphin
                 return new PointF(x, y);
             else
                 return new PointF(-99, -99); //indicates error
+        }
+
+        private void myFill(PointF[] polygon, Graphics g)
+        {
+            List<Edge> globalEdgeTable = initializeGlobalEdgeTable(polygon);
+            int scanLine = globalEdgeTable[0].Ymin;
+            List<Edge> activeEdgeTable = initializeActiveEdgeTable(polygon, scanLine, globalEdgeTable);
+            foreach (Edge e in activeEdgeTable)
+            {
+                globalEdgeTable.Remove(e);
+            }
+            Pen pen = new Pen(Brushes.Red);
+            while (activeEdgeTable.Count != 0)
+            {
+                activeEdgeTable.RemoveAll(e => e.Ymax == scanLine);
+                activeEdgeTable.AddRange(globalEdgeTable.FindAll(e => e.Ymin == scanLine));
+                if (activeEdgeTable.Count == 0) break;
+                globalEdgeTable.RemoveAll(e => e.Ymin == scanLine);
+                sortActiveET(ref activeEdgeTable);
+                for (int i = 0; i < activeEdgeTable.Count - 1; i++)
+                {
+                    PointF p1 = new PointF(activeEdgeTable[i].XvalOfYmin, activeEdgeTable[i].Ymin);
+                    PointF p2 = new PointF(activeEdgeTable[i+1].XvalOfYmin, activeEdgeTable[i+1].Ymin);
+                    //g.FillRectangle(Brushes.Red, p1.X, p1.Y, 1, 1);
+                    g.DrawLine(pen, p1, p2);
+                }
+                foreach (Edge e in activeEdgeTable)
+                {
+                    e.XvalOfYmin = (int)Math.Ceiling(e.XvalOfYmin + (1 / e.Slope));
+                }
+                scanLine += 1;
+            }
+        }
+
+        private void sortActiveET(ref List<Edge> aet)
+        {
+            aet.OrderBy(e => e.XvalOfYmin);
+        }
+
+        private List<Edge> initializeGlobalEdgeTable(PointF[] polygon)
+        {
+            List<Edge> globalEdgeTable = new List<Edge>();
+            for (int i = 0; i < polygon.Length - 1; i++)
+            {
+                Edge e = new Edge(polygon[i], polygon[i + 1]);
+                insertIntoEdgeTable(ref globalEdgeTable, e);
+            }
+            Edge lasteEdge = new Edge(polygon[polygon.Length - 1], polygon[0]);
+            insertIntoEdgeTable(ref globalEdgeTable, lasteEdge);
+            return globalEdgeTable;
+        }
+
+        private List<Edge> initializeActiveEdgeTable(PointF[] polygon, float scanLine, List<Edge> globalEdgeTable)
+        {
+            var result = new List<Edge>();
+            foreach (Edge e in globalEdgeTable)
+            {
+                if (e.Ymin > scanLine)
+                    break;
+                if (e.Ymin == scanLine)
+                    result.Add(e);
+            }
+            return result;
+        }
+
+        private void insertIntoEdgeTable(ref List<Edge> edgeTable, Edge e)
+        {
+            if (e.Slope == 0 || edgeTable.Contains(e))
+                return;
+            if (edgeTable.Count == 0 && e.Slope != 0)
+            {
+                edgeTable.Add(e);
+                return;
+            }
+            for (int i = 0; i < edgeTable.Count; i++)
+            {
+                if (edgeTable[i].Ymin < e.Ymin)
+                    continue;
+                if (edgeTable[i].Ymin > e.Ymin)
+                {
+                    edgeTable.Insert(i, e);
+                    return;
+                }
+                if (edgeTable[i].Ymin == e.Ymin)
+                {
+                    int j = i;
+                    while (edgeTable[j].Xmin < e.Xmin)
+                        j++;
+                    edgeTable.Insert(j, e);
+                    return;
+                }
+
+            }
         }
     }
 }
